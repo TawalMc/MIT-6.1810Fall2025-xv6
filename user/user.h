@@ -1,4 +1,12 @@
 #define SBRK_ERROR ((char *)-1)
+#define stdin 0
+#define stdout 1
+#define stderr 2
+
+typedef int bool;
+#define true 1;
+#define false 0;
+
 
 struct stat;
 
