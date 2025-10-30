@@ -197,6 +197,7 @@ UPROGS=\
 	$U/_dorphan\
 	$U/_sleep\
 	$U/_pingpong\
+	$U/_sixfive\
 
 
 
