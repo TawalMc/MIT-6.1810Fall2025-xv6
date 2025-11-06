@@ -20,15 +20,12 @@ fmtname(char *path)
 	if (strlen(p) >= DIRSIZ)
 		return p;
 	memmove(buf, p, strlen(p));
-	// memset(buf + strlen(p), ' ', DIRSIZ - strlen(p));
 	buf[sizeof(buf) - 1] = '\0';
 	return buf;
 }
 
 void find(char *path, char *filename)
 {
-	fprintf(stdin, "-- path: %s --\n", path);
-
 	int fd = open(path, O_RDONLY);
 	if (fd < 0)
 	{
@@ -66,7 +63,6 @@ void find(char *path, char *filename)
 	struct dirent de;
 	while (read(fd, &de, sizeof(de)) == sizeof(de))
 	{
-		fprintf(stdin, "name: %s\n", de.name);
 		if (de.inum == 0)
 			continue;
 		memmove(p, de.name, DIRSIZ);
@@ -77,18 +73,21 @@ void find(char *path, char *filename)
 			continue;
 		}
 
-		if (strcmp(fmtname(buf), ".") == 0 || strcmp(fmtname(buf), "..") == 0)
+		char *base_name = fmtname(buf);
+		if (strcmp(base_name, ".") == 0 || strcmp(base_name, "..") == 0)
 			continue;
 
-		fprintf(stdout, "%s: %s: %d\n", buf, fmtname(buf), st.type);
+		if (st.type == T_FILE && strcmp(base_name, filename) == 0)
+		{
+			fprintf(stdout, "%s\n", buf);
+		}
+
 		if (st.type == T_DIR)
 		{
 			find(buf, filename);
 		}
 	}
-
 	close(fd);
-	exit(0);
 }
 
 int main(int argc, char *argv[])
