@@ -86,11 +86,6 @@ void find(char *path, char *filename, int count_cmd, char *cmd[])
 			}
 			else
 			{
-				for (int i = 0; i < count_cmd; i++)
-				{
-					fprintf(stdin, "%s \n", cmd[i]);
-				}
-
 				int pid = fork();
 				if (pid < 0)
 				{
@@ -99,7 +94,8 @@ void find(char *path, char *filename, int count_cmd, char *cmd[])
 				}
 				else if (pid == 0)
 				{
-					exec(cmd[0], cmd + 1);
+					cmd[count_cmd] = buf;
+					exec(cmd[0], cmd);
 					exit(0);
 				}
 				else
@@ -144,24 +140,17 @@ int main(int argc, char *argv[])
 		exit(0);
 	}
 
-	// char cmd[512], *p;
-	// memset(cmd, '\0', sizeof(cmd));
-	// p = cmd;
 	//$ find . wc -exec echo hi
+	char *cmd[MAXARG];
 	if (argc > 3 && strcmp(argv[3], "-exec") == 0)
 	{
-		// for (int i = 4; i < argc; i++)
-		// {
-		// 	strcpy(p, argv[i]);
-		// 	p = p + strlen(argv[i]);
-		// 	*p = ' ';
-		// 	p++;
-		// }
-		// cmd[strlen(cmd) - 1] = '\0';
-		char *cmd = argv;
-
-
-		find(argv[1], argv[2], argc - 3, cmd);
+		int i = 0;
+		for (i = 0; i < argc - 4; i++)
+		{
+			cmd[i] = argv[i + 4];
+		}
+		cmd[i] = argv[2];
+		find(argv[1], argv[2], i, cmd);
 	}
 
 	exit(0);
