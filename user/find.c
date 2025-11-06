@@ -2,6 +2,7 @@
 #include "kernel/fs.h"
 #include "kernel/stat.h"
 #include "kernel/fcntl.h"
+#include "kernel/param.h"
 #include "user/user.h"
 
 char *
@@ -24,7 +25,7 @@ fmtname(char *path)
 	return buf;
 }
 
-void find(char *path, char *filename)
+void find(char *path, char *filename, int count_cmd, char *cmd[])
 {
 	int fd = open(path, O_RDONLY);
 	if (fd < 0)
@@ -79,12 +80,38 @@ void find(char *path, char *filename)
 
 		if (st.type == T_FILE && strcmp(base_name, filename) == 0)
 		{
-			fprintf(stdout, "%s\n", buf);
+			if (count_cmd == 0)
+			{
+				fprintf(stdout, "%s\n", buf);
+			}
+			else
+			{
+				for (int i = 0; i < count_cmd; i++)
+				{
+					fprintf(stdin, "%s \n", cmd[i]);
+				}
+
+				int pid = fork();
+				if (pid < 0)
+				{
+					fprintf(2, "an error occured when creating new child \n");
+					exit(1);
+				}
+				else if (pid == 0)
+				{
+					exec(cmd[0], cmd + 1);
+					exit(0);
+				}
+				else
+				{
+					wait((int *)0);
+				}
+			}
 		}
 
 		if (st.type == T_DIR)
 		{
-			find(buf, filename);
+			find(buf, filename, count_cmd, cmd);
 		}
 	}
 	close(fd);
@@ -92,22 +119,50 @@ void find(char *path, char *filename)
 
 int main(int argc, char *argv[])
 {
-	if (argc < 3)
+	if (argc <= 2)
 	{
 		fprintf(stderr, "find usage: find [path] filename\n");
 		exit(1);
 	}
-	// if (argc == 2)
-	// {
-	// 	find(".", argv[1]);
-	// 	exit(0);
-	// }
-	// for (int i = 1; i < count; i++)
-	// {
-	// 	/* code */
-	// }
 
-	find(argv[1], argv[2]);
+	if (argc >= MAXARG)
+	{
+		fprintf(stderr, "find: to much args\n");
+		exit(1);
+	}
+
+	if (strlen(argv[2]) > MAXPATH)
+	{
+		fprintf(stderr, "find: filename too long\n");
+		exit(1);
+	}
+
+	if (argc == 3)
+	{
+		char *null_data[] = {0};
+		find(argv[1], argv[2], 0, null_data);
+		exit(0);
+	}
+
+	// char cmd[512], *p;
+	// memset(cmd, '\0', sizeof(cmd));
+	// p = cmd;
+	//$ find . wc -exec echo hi
+	if (argc > 3 && strcmp(argv[3], "-exec") == 0)
+	{
+		// for (int i = 4; i < argc; i++)
+		// {
+		// 	strcpy(p, argv[i]);
+		// 	p = p + strlen(argv[i]);
+		// 	*p = ' ';
+		// 	p++;
+		// }
+		// cmd[strlen(cmd) - 1] = '\0';
+		char *cmd = argv;
+
+
+		find(argv[1], argv[2], argc - 3, cmd);
+	}
 
 	exit(0);
 }
