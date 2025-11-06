@@ -198,6 +198,8 @@ UPROGS=\
 	$U/_sleep\
 	$U/_pingpong\
 	$U/_sixfive\
+	$U/_find\
+
 
 
 
