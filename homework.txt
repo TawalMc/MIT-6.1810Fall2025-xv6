@@ -1,0 +1,38 @@
+LECTURE 1: 
+Context: For this lecture, read the xv6 implementation of a simple Unix program, cat, available here. 
+
+Q: How does the system keep track of the connection between the string filename argv[i] passed to open(), 
+and the resulting integer file descriptor fd? 
+R: Each file descriptor is associated to a process ID (PID)
+
+Q: What does the integer file descriptor number refer to?
+R: File descriptor number refer to an entry (index) in a table available per process that list
+opened files by the process.
+
+-----------------------------------------------------------------------------------------------------------------
+
+LECTURE 2:
+Consider the following fragment of C code, on a 32-bit system:
+
+struct f {
+  int a;
+  char b[32];
+};
+
+struct g {
+  char *c;
+  int d[4];
+};
+
+struct h {
+  struct f *f;
+  struct g g;
+};
+
+struct h *h;
+Suppose that the value of h is 0x1000. Figure out the values of the following expressions, or explain why it's not possible to figure them out:
+
+1. &h->g.d[2]  : 0x1010
+2. &h->f->a    : Not Possible because we need to know address hold by *f and that'll be the address of &h->f->a
+3. &h->g.c	   : 0x1004
+4. &h->g.c[10] : Not Possible because we need to know address On which *c point to and that'll be the address of &h->g.c[10]
