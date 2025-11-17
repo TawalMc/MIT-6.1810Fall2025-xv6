@@ -1,0 +1,37 @@
+xv6 reading homework
+Throughout this semester, 
+we expect that you will read the entire implementation of the xv6 kernel, 
+accompanied by the xv6 book, which explains the rationale and 
+design underlying the kernel's implementation. 
+(The source code is also available as a Lions-style PDF)
+
+For this lecture, 
+read the following files in the xv6 kernel implementation:
+
+kernel/proc.h
+kernel/defs.h
+kernel/entry.S
+kernel/main.c
+user/init.c
+and also skim the implementation of processes in the following files:
+
+kernel/proc.c
+kernel/exec.c
+
+Suppose that an xv6 kernel 
+has used up all of the struct proc entries in 
+the struct proc proc[NPROC] table (i.e., none of them have state == UNUSED). 
+
+Q: What happens if one of the processes calls exec()? 
+R: It'll execute the command. exec() just override the current proc 
+ressources by the command allocated ressources
+
+Q: What happens if one of the processes calls fork()? 
+R: As all process are already used, It'll return -1, no child process will be created because
+the max of process is already created.
+
+Q: What happens if one of the processes calls kill() on 
+an existing PID and then calls fork()?
+R: As all process are already used, It'll return -1, no child process will be created.
+The kill just set proc->killed to 1 and is really unused when return back to parent.
+
