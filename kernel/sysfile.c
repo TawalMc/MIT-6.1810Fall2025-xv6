@@ -438,10 +438,12 @@ sys_exec(void)
   int i;
   uint64 uargv, uarg;
 
+
   argaddr(1, &uargv);
   if(argstr(0, path, MAXPATH) < 0) {
     return -1;
   }
+
   memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
     if(i >= NELEM(argv)){

@@ -1,0 +1,29 @@
+Q: Looking at the backtrace output, which function called syscall?
+R: usertrap() from kernel/trap.c
+
+Q: What is the value of p->trapframe->a7 and what does that value represent ?
+R: 15 which is SYS_open value
+
+Q: What was the previous mode that the CPU was in?
+R: user mode
+
+Q: Write down the assembly instruction the kernel is panicing at ?
+R: 0x80001cf8
+
+Q: Which register corresponds to the variable num ?
+R: a3
+
+Q: Why does the kernel crash ?
+R: Accessing invalid space memory
+
+Q: is address 0 mapped in the kernel address space ?
+R: No
+
+Q: Is that confirmed by the value in scause above ? 
+R: Yes - Load page fault
+
+Q: What is the name of the process that was running when the kernel paniced? 
+R: init
+
+Q: What is its process id (pid)?
+R: 1
