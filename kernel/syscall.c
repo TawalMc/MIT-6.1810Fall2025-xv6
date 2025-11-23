@@ -138,27 +138,42 @@ void syscall(void)
 	{
 		int mask = p->interpose_set.mask;
 		if ((mask & (1 << num)) >> num)
-		{	
+		{
+
 			if (num == SYS_open || num == SYS_exec)
 			{
-				printf("sys: %d\n", num);
-				// len = strlen(p->interpose_set.allowed_path);
-				// int r = argstr(0, path, len + 1);
-				// printf("sys: %d; r: %s; allaw: %s; len: %d\n", num, path, p->interpose_set.allowed_path, len);
-
+				// printf("sys: %d\n", num);
 				len = strlen(p->interpose_set.allowed_path);
-				if (argstr(0, path, len + 1) < 0) {
-					p->trapframe->a0 = -1;
-					return;
-				}
 
-				if (strncmp(p->interpose_set.allowed_path, path, len) == 0)
+				if (num == SYS_open)
 				{
-					p->trapframe->a0 = syscalls[num]();
-					return;
+					if (argstr(0, path, len + 1) < 0)
+						goto not_allowed;
+
+					if (strncmp(
+							p->interpose_set.allowed_path,
+							path, len) == 0)
+						goto allowed;
+				}
+				else if (num == SYS_exec)
+				{
+					uint64 uargv, uarg;
+
+					argaddr(1, &uargv);
+
+					if (fetchaddr(uargv + sizeof(uint64) * 2, (uint64 *)&uarg) < 0)
+						goto not_allowed;
+
+					if (fetchstr(uarg, path, len + 1) < 0)
+						goto not_allowed;
+
+					if (strncmp(
+							p->interpose_set.allowed_path,
+							path, len) == 0)
+						goto allowed;
 				}
 			}
-			
+
 			// this system call is not allowed
 			p->trapframe->a0 = -1;
 			return;
@@ -166,12 +181,19 @@ void syscall(void)
 
 		// Use num to lookup the system call function for num, call it,
 		// and store its return value in p->trapframe->a0
-		p->trapframe->a0 = syscalls[num]();
+		goto allowed;
 	}
 	else
 	{
-		printf("%d %s: unknown sys call %d\n",
-			   p->pid, p->name, num);
-		p->trapframe->a0 = -1;
+		printf("%d %s: unknown sys call %d\n", p->pid, p->name, num);
+		goto not_allowed;
 	}
+
+allowed:
+	p->trapframe->a0 = syscalls[num]();
+	return;
+
+not_allowed:
+	p->trapframe->a0 = -1;
+	return;
 }
