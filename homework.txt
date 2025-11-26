@@ -1,22 +1,4 @@
 xv6 reading homework
-Throughout this semester, 
-we expect that you will read the entire implementation of the xv6 kernel, 
-accompanied by the xv6 book, which explains the rationale and 
-design underlying the kernel's implementation. 
-(The source code is also available as a Lions-style PDF)
-
-For this lecture, 
-read the following files in the xv6 kernel implementation:
-
-kernel/proc.h
-kernel/defs.h
-kernel/entry.S
-kernel/main.c
-user/init.c
-and also skim the implementation of processes in the following files:
-
-kernel/proc.c
-kernel/exec.c
 
 Suppose that an xv6 kernel 
 has used up all of the struct proc entries in 

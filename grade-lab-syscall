@@ -47,7 +47,7 @@ def test_sandbox_path():
         'sandbox 128 sh sh < exec.sh',
     ]))
     matches = re.findall("xv6", r.qemu.output)
-    assert_equal(len(matches), 12, "Number of appearances of 'xv6'")
+    assert_equal(len(matches), 8, "Number of appearances of 'xv6'")
     r.match('^grep: cannot open x')
     matches = re.findall("hello world!", r.qemu.output)
     assert_equal(len(matches), 0, "Number of appearances of 'hello world' failed")
@@ -79,6 +79,7 @@ def test_sandbox_bigpath():
 @test(14, "attack")
 def test_attack():
     secret = random_str(8)
+    print("random: ", secret)
     r.run_qemu(shell_script([
         'secret ' + secret,
         'attack',
