@@ -1,0 +1,43 @@
+Lecture 4: OS Organization - Microkernels
+
+For this lecture, read the paper 
+The Performance of micro-Kernel-Based Systems.
+
+Q: What is one feature/subsystem that's implemented in 
+the kernel in xv6, but is implemented 
+in userspace (i.e., missing from the kernel) in L4? 
+R: File system or file server
+
+Q: What Unix operations are particularly slow on 
+an L4-based Linux system ? 
+R: Inter-Process Communication (IPC)
+
+Q: why?
+R: A lot of step before to complete
+
+-----------------------------------------------------------
+
+Lecture 5: Page ables
+
+For this lecture, read the following files 
+in the xv6 kernel implementation:
+
+kernel/memlayout.h
+kernel/vm.c
+kernel/kalloc.c
+kernel/riscv.h
+kernel/exec.c
+
+In exec.c:loadseg(), the kernel looks up a physical 
+address pa and then directly passes it to readi(), 
+which writes data to that address as if it was a pointer. 
+
+Q: How is the kernel able to write to physical memory addresses, 
+rather than virtual memory addresses? 
+R: Because here, the virtual memory addresses are directly mapped
+to physical adresses.
+
+Q: What line of code allows this to work?
+R: vm:50 
+  // map kernel data and the physical RAM we'll make use of.
+  kvmmap(kpgtbl, (uint64)etext, (uint64)etext, PHYSTOP-(uint64)etext, PTE_R | PTE_W);
