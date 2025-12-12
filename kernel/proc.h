@@ -1,5 +1,3 @@
-#include "kernel/types.h"
-
 // Saved registers for kernel context switches.
 struct context
 {
@@ -121,6 +119,6 @@ struct proc
 
 	// usyscall
 #ifdef LAB_PGTBL
-	usyscall_t *usyscall;   // data page for usyscall
+	struct usyscall *usyscall; // data page for usyscall
 #endif
 };

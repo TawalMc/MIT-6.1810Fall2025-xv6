@@ -137,16 +137,13 @@ found:
 
 #ifdef LAB_PGTBL
 	// usyscall
-	if ((p->usyscall = (usyscall_t *)kalloc()) == 0)
+	if ((p->usyscall = (struct usyscall *)kalloc()) == 0)
 	{
 		freeproc(p);
 		release(&p->lock);
 		return 0;
 	}
-	// TODO: set usyscall->pid
-	// struct usyscall u = {.pid = p->pid};
-	usyscall_t id = p->pid;
-	memmove(p->usyscall, &id, sizeof(id));
+	p->usyscall->pid = p->pid;
 
 #endif
 
@@ -233,7 +230,7 @@ proc_pagetable(struct proc *p)
 	// map usyscall
 #ifdef LAB_PGTBL
 	if (mappages(pagetable, USYSCALL, PGSIZE,
-				 (uint64)(p->usyscall), PTE_R) < 0)
+				 (uint64)(p->usyscall), PTE_R | PTE_U) < 0)
 	{
 		uvmunmap(pagetable, TRAPFRAME, 1, 0);
 		uvmunmap(pagetable, TRAMPOLINE, 1, 0);
@@ -328,11 +325,7 @@ int kfork(void)
 
 	// copy usyscall
 #ifdef LAB_PGTBL
-	// *(np->usyscall) = np->pid; //*(p->usyscall);
-	np->usyscall = p->usyscall;
-	// TODO: update usyscall->pid
-	// usyscall_t id = np->pid;
-	// memmove(np->usyscall, &id, sizeof(id));
+	np->usyscall->pid = np->pid;
 #endif
 
 	// increment reference counts on open file descriptors.

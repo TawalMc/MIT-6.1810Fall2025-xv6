@@ -168,9 +168,7 @@ sbrklazy(int n)
 #ifdef LAB_PGTBL
 int ugetpid(void)
 {
-	//   struct usyscall *u = (struct usyscall *)USYSCALL;
-	//   return u->pid;
-	int id = *((int *)USYSCALL);
-	return id;
+	struct usyscall *u = (struct usyscall *)USYSCALL;
+	return u->pid;
 }
 #endif
