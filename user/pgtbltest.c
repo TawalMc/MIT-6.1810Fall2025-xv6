@@ -63,8 +63,12 @@ ugetpid_test()
   printf("ugetpid_test starting\n");
   testname = "ugetpid_test";
 
-  if(getpid() != ugetpid())
-    err("mismatched PID #1");
+  printf("getpid: %d\n", getpid());
+  printf("ugetpid: %d\n", ugetpid());
+
+
+  if (getpid() != ugetpid())
+	  err("mismatched PID #1");
 
   for (i = 0; i < 64; i++) {
     int ret = fork();
