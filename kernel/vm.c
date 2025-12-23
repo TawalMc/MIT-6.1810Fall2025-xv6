@@ -96,7 +96,8 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
 	if (va >= MAXVA)
 		panic("walk");
 
-	for (int level = 2; level > 0; level--)
+	int end = alloc == SUPERPGSIZE ? 1 : 0;
+	for (int level = 2; level > end; level--)
 	{
 		pte_t *pte = &pagetable[PX(level, va)];
 		if (*pte & PTE_V)
@@ -221,10 +222,12 @@ void vmprint(pagetable_t pagetable)
 // does not flush TLB or enable paging.
 void kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
 {
+	// printf("va: %p, pa: %p\n", (void *)va, (void *)pa);
 	if (mappages(kpgtbl, va, sz, pa, perm) != 0)
 		panic("kvmmap");
 }
 
+// TODO: to be edited
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa.
 // va and size MUST be page-aligned.
@@ -232,31 +235,34 @@ void kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
 // allocate a needed page-table page.
 int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 {
-	uint64 a, last;
+	uint64 a, last, pgsize;
 	pte_t *pte;
 
-	if ((va % PGSIZE) != 0)
+	int is_superpg = size >= SUPERPGSIZE && (va % SUPERPGSIZE) == 0;
+	pgsize = is_superpg ? SUPERPGSIZE : PGSIZE;
+
+	if ((va % pgsize) != 0)
 		panic("mappages: va not aligned");
 
-	if ((size % PGSIZE) != 0)
+	if ((size % pgsize) != 0)
 		panic("mappages: size not aligned");
 
 	if (size == 0)
 		panic("mappages: size");
 
 	a = va;
-	last = va + size - PGSIZE;
+	last = va + size - pgsize;
 	for (;;)
 	{
-		if ((pte = walk(pagetable, a, 1)) == 0)
+		if ((pte = walk(pagetable, a, pgsize)) == 0)
 			return -1;
 		if (*pte & PTE_V)
 			panic("mappages: remap");
 		*pte = PA2PTE(pa) | perm | PTE_V;
 		if (a == last)
 			break;
-		a += PGSIZE;
-		pa += PGSIZE;
+		a += pgsize;
+		pa += pgsize;
 	}
 	return 0;
 }
@@ -274,6 +280,7 @@ uvmcreate()
 	return pagetable;
 }
 
+// TODO: to be edited !!
 // Remove npages of mappings starting from va. va must be
 // page-aligned. It's OK if the mappings don't exist.
 // Optionally free the physical memory.
@@ -281,29 +288,41 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 {
 	uint64 a;
 	pte_t *pte;
-	int sz = PGSIZE;
 
 	if ((va % PGSIZE) != 0)
 		panic("uvmunmap: not aligned");
 
-	for (a = va; a < va + npages * PGSIZE; a += sz)
+	int pgsize = PGSIZE;
+	for (a = va; a < va + npages * PGSIZE; a += pgsize)
 	{
 		if ((pte = walk(pagetable, a, 0)) == 0) // leaf page table entry allocated?
 			continue;
 		if ((*pte & PTE_V) == 0) // has physical page been allocated?
 			continue;
-		sz = PGSIZE;
+		// sz = PGSIZE;
 		if (PTE_FLAGS(*pte) == PTE_V)
 			panic("uvmunmap: not a leaf");
+
+		uint64 pa = PTE2PA(*pte);
+		int is_superpg = pa >= SUPSTART;
+		pgsize = is_superpg ? SUPERPGSIZE : PGSIZE;
+
 		if (do_free)
 		{
-			uint64 pa = PTE2PA(*pte);
-			kfree((void *)pa);
+			if (is_superpg)
+			{
+				superfree((void *)pa);
+			}
+			else
+			{
+				kfree((void *)pa);
+			}
 		}
 		*pte = 0;
 	}
 }
 
+// TODO: to be edited !!
 // Allocate PTEs and physical memory to grow process from oldsz to
 // newsz, which need not be page aligned.  Returns new size or 0 on error.
 uint64
@@ -311,27 +330,39 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
 {
 	char *mem;
 	uint64 a;
-	int sz;
+	uint64 pgsize = PGSIZE;
 
 	if (newsz < oldsz)
 		return oldsz;
 
+	int is_superpg = (newsz - oldsz) >= SUPERPGSIZE;
+	pgsize = is_superpg ? SUPERPGSIZE : pgsize;
+
 	oldsz = PGROUNDUP(oldsz);
-	for (a = oldsz; a < newsz; a += sz)
+
+	for (a = oldsz; a < newsz; a += pgsize)
 	{
-		sz = PGSIZE;
+
+		mem = is_superpg ? superalloc() : kalloc();
 		mem = kalloc();
 		if (mem == 0)
 		{
 			uvmdealloc(pagetable, a, oldsz);
 			return 0;
 		}
-#ifndef LAB_SYSCALL
-		memset(mem, 0, sz);
-#endif
-		if (mappages(pagetable, a, sz, (uint64)mem, PTE_R | PTE_U | xperm) != 0)
+		memset(mem, 0, pgsize);
+
+		if (mappages(pagetable, a, pgsize, (uint64)mem, PTE_R | PTE_U | xperm) != 0)
 		{
-			kfree(mem);
+			if (is_superpg)
+			{
+				superfree(mem);
+			}
+			else
+			{
+				kfree(mem);
+			}
+
 			uvmdealloc(pagetable, a, oldsz);
 			return 0;
 		}
@@ -339,6 +370,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
 	return newsz;
 }
 
+// TODO: to be edited !!
 // Deallocate user pages to bring the process size from oldsz to
 // newsz.  oldsz and newsz need not be page-aligned, nor does newsz
 // need to be less than oldsz.  oldsz can be larger than the actual
@@ -349,10 +381,23 @@ uvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
 	if (newsz >= oldsz)
 		return oldsz;
 
-	if (PGROUNDUP(newsz) < PGROUNDUP(oldsz))
+	int is_superpg = (oldsz - newsz) >= SUPERPGSIZE;
+
+	if (is_superpg)
 	{
-		int npages = (PGROUNDUP(oldsz) - PGROUNDUP(newsz)) / PGSIZE;
-		uvmunmap(pagetable, PGROUNDUP(newsz), npages, 1);
+		if (SUPERPGROUNDUP(newsz) < SUPERPGROUNDUP(oldsz))
+		{
+			int npages = (SUPERPGROUNDUP(oldsz) - SUPERPGROUNDUP(newsz)) / SUPERPGSIZE;
+			uvmunmap(pagetable, SUPERPGROUNDUP(newsz), npages, 1);
+		}
+	}
+	else
+	{
+		if (PGROUNDUP(newsz) < PGROUNDUP(oldsz))
+		{
+			int npages = (PGROUNDUP(oldsz) - PGROUNDUP(newsz)) / PGSIZE;
+			uvmunmap(pagetable, PGROUNDUP(newsz), npages, 1);
+		}
 	}
 
 	return newsz;
@@ -391,6 +436,7 @@ void uvmfree(pagetable_t pagetable, uint64 sz)
 	freewalk(pagetable);
 }
 
+// TODO: to be edited:
 // Given a parent process's page table, copy
 // its memory into a child's page table.
 // Copies both the page table and the
@@ -416,12 +462,23 @@ int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 		szinc = PGSIZE;
 		pa = PTE2PA(*pte);
 		flags = PTE_FLAGS(*pte);
-		if ((mem = kalloc()) == 0)
+
+		int is_superpg = pa >= SUPSTART;
+		szinc = is_superpg ? SUPERPGSIZE : PGSIZE;
+
+		if ((mem = is_superpg ? superalloc() : kalloc()) == 0)
 			goto err;
-		memmove(mem, (char *)pa, PGSIZE);
-		if (mappages(new, i, PGSIZE, (uint64)mem, flags) != 0)
+		memmove(mem, (char *)pa, szinc);
+		if (mappages(new, i, szinc, (uint64)mem, flags) != 0)
 		{
-			kfree(mem);
+			if (is_superpg)
+			{
+				superfree(mem);
+			}
+			else
+			{
+				kfree(mem);
+			}
 			goto err;
 		}
 	}
