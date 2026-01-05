@@ -1,0 +1,5 @@
+Xv6 maps the trampoline page at the same virtual address 
+in both user and kernel page tables, pointing to the same
+physical memory. This ensures that when the page switches,
+the next instruction remains exactly where the CPU expects
+it to be.
