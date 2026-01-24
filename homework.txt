@@ -1,0 +1,17 @@
+For this lecture, read the following files in the xv6 kernel implementation:
+
+kernel/sysproc.c:sbrk()
+kernel/trap.c:usertrap()
+kernel/vm.c:vmfault()
+
+Q: vm.c:copyout() calls vmfault when dstva isn't mapped. 
+Describe a scenario in which dstva isn't mapped? 
+R: 
+- lazy memory allocation:
+	- process ask for memory (memory grow) through sbrk()
+	- kernel increases process size but doesn't map the physical memory
+	- 
+
+Q: That is, give a list of system calls that a process 
+can make to triggers this case.
+R:
