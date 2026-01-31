@@ -306,7 +306,7 @@ int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 	pte_t *pte, *new_pte;
 	uint64 pa, i;
 	uint flags;
-	char *mem;
+	// char *mem;
 
 	for (i = 0; i < sz; i += PGSIZE)
 	{
@@ -331,7 +331,7 @@ int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 			*pte &= ~PTE_W;
 
 			new_pte = walk(new, i, 0);
-			*new_pte &= ~PTE_W;
+			*new_pte &= ~PTE_W | PTE_RSW;
 		}
 	}
 	return 0;
