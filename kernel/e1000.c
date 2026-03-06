@@ -104,14 +104,23 @@ int e1000_transmit(char *buf, int len)
 	// return -1 on failure (e.g., there is no descriptor available)
 	// so that the caller knows to free buf.
 	//
-	printf("transmit--\n");
+	printf("transmit\n");
 
-	uint16 next_index = regs[E1000_TDT];
-	printf("E1000_TDT: %d\n", next_index);
+	uint32 next_index = regs[E1000_TDT];
+	// todo: next_index >= 16 and next_index % 16
+	if (next_index >= TX_RING_SIZE)
+		return -1;
 
-	// todo: check index < 15 before using
-	// printf("desc: %d\n", tx_ring[next_index]);
+	if ((tx_ring[next_index].status & E1000_TXD_STAT_DD) != E1000_TXD_STAT_DD)
+		return -1;
+	
+	if (tx_ring[next_index].addr)
+	{
+		/* code */
+	}
+	
 
+	printf("reg[E1000_TDT]: %d\n", next_index);
 
 	return 0;
 }
@@ -125,7 +134,6 @@ e1000_recv(void)
 	// Check for packets that have arrived from the e1000
 	// Create and deliver a buf for each packet (using net_rx()).
 	//
-	printf("reveive--\n");
 }
 
 void e1000_intr(void)
