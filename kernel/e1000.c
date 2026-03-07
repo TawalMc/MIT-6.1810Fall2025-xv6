@@ -104,30 +104,26 @@ int e1000_transmit(char *buf, int len)
 	// return -1 on failure (e.g., there is no descriptor available)
 	// so that the caller knows to free buf.
 	//
-	printf("transmit\n");
-	acquire(&e1000_lock);
-
+	
 	uint32 next_index = regs[E1000_TDT];
-	// todo: next_index >= 16 and next_index % 16
 	if (next_index >= TX_RING_SIZE)
 		return -1;
+
+	acquire(&e1000_lock);
 
 	if ((tx_ring[next_index].status & E1000_TXD_STAT_DD) != E1000_TXD_STAT_DD)
 		return -1;
 
-	if (!tx_ring[next_index].addr)
-		return -1;
-
-	kfree((void *)tx_ring[next_index].addr);
+	if (tx_ring[next_index].addr)
+		kfree((void *)tx_ring[next_index].addr);
 
 	tx_ring[next_index].addr = (uint64)buf;
 	tx_ring[next_index].length = len;
 	tx_ring[next_index].cmd = E1000_TXD_CMD_EOP;
 
-	regs[E1000_TDT] = (next_index % TX_RING_SIZE) + 1;
-
+	regs[E1000_TDT] = (next_index + 1) % TX_RING_SIZE;
 	release(&e1000_lock);
-	printf("reg[E1000_TDT]: %d\n", next_index);
+
 	return 0;
 }
 
