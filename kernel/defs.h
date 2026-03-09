@@ -227,7 +227,8 @@ int             snprintf(char*, unsigned long, const char*, ...);
 void            kcsaninit();
 #endif
 
-#ifdef LAB_NET
+// #define LAB_NET 1
+#ifdef LAB_NET 
 // pci.c
 void            pci_init();
 

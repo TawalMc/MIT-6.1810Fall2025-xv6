@@ -104,22 +104,28 @@ int e1000_transmit(char *buf, int len)
 	// return -1 on failure (e.g., there is no descriptor available)
 	// so that the caller knows to free buf.
 	//
-	
-	uint32 next_index = regs[E1000_TDT];
-	if (next_index >= TX_RING_SIZE)
-		return -1;
-
 	acquire(&e1000_lock);
 
-	if ((tx_ring[next_index].status & E1000_TXD_STAT_DD) != E1000_TXD_STAT_DD)
+	uint32 next_index = regs[E1000_TDT];
+	if (next_index >= TX_RING_SIZE)
+	{
+		release(&e1000_lock);
 		return -1;
+	}
+
+	if ((tx_ring[next_index].status & E1000_TXD_STAT_DD) != E1000_TXD_STAT_DD)
+	{
+		release(&e1000_lock);
+		return -1;
+	}
 
 	if (tx_ring[next_index].addr)
 		kfree((void *)tx_ring[next_index].addr);
 
 	tx_ring[next_index].addr = (uint64)buf;
 	tx_ring[next_index].length = len;
-	tx_ring[next_index].cmd = E1000_TXD_CMD_EOP;
+	tx_ring[next_index].cmd = E1000_TXD_CMD_EOP | E1000_TXD_CMD_RS;
+	tx_ring[next_index].status = 0;
 
 	regs[E1000_TDT] = (next_index + 1) % TX_RING_SIZE;
 	release(&e1000_lock);
@@ -136,6 +142,28 @@ e1000_recv(void)
 	// Check for packets that have arrived from the e1000
 	// Create and deliver a buf for each packet (using net_rx()).
 	//
+	// printf("receive--\n");
+	// acquire(&e1000_lock);
+
+	while (1)
+	{
+		uint32 next_index = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
+
+		if ((rx_ring[next_index].status & E1000_RXD_STAT_DD) != E1000_RXD_STAT_DD)
+			break;
+
+		net_rx((char *)rx_ring[next_index].addr, rx_ring[next_index].length);
+
+		rx_ring[next_index].addr = (uint64)kalloc();
+		// if (!rx_ring[next_index].addr)
+		// 	release(&e1000_lock);
+		// panic("e1000");
+
+		rx_ring[next_index].status &= ~1;
+
+		regs[E1000_RDT] = next_index;
+	}
+	// release(&e1000_lock);
 }
 
 void e1000_intr(void)
