@@ -56,7 +56,6 @@ sys_bind(void)
 
 	int i = 0;
 	int free_index = -1;
-	int alread_exist = 0;
 	for (i = 0; i < MAX_UDP_PACKETS; i++)
 	{
 		if (tracked_packets[i].uport == 0)
@@ -69,13 +68,11 @@ sys_bind(void)
 		}
 	}
 
-	if (free_index > 0)
+	if (free_index >= 0)
 	{
-		// TODO
-		/* code */
+		tracked_packets[free_index].uport = port;
 	}
 	
-
 	return -1;
 }
 
