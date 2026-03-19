@@ -72,11 +72,19 @@ struct udp
 };
 
 #define MAX_UDP_PACKETS 16
+struct c_udp
+{
+	uint16 sport; // source port
+	uint16 dport; // destination port
+	uint16 ulen;  // length, including udp header, not including IP header
+	uint16 sum;	  // checksum
+	uint32 ip_src;
+};
 // track udp packets used to store bounded ports
 struct udp_packets
 {
 	uint16 uport;						  // udp bound port
-	struct udp upackets[MAX_UDP_PACKETS]; // udp packet
+	struct c_udp upackets[MAX_UDP_PACKETS]; // udp packet
 	uint8 curr_packet;					  // current packet in use
 };
 
