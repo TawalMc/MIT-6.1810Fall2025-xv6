@@ -18,10 +18,30 @@ static inline uint32 bswapl(uint32 val)
 
 // Use these macros to convert network bytes to the native byte order.
 // Note that Risc-V uses little endian while network order is big endian.
-#define ntohs bswaps
-#define ntohl bswapl
-#define htons bswaps
-#define htonl bswapl
+#define _ntohs bswaps
+#define _ntohl bswapl
+#define _htons bswaps
+#define _htonl bswapl
+
+uint16 ntohs(uint16 val)
+{
+	return _ntohs(val);
+}
+
+uint16 htons(uint16 val)
+{
+	return _htons(val);
+}
+
+uint32 htonl(uint32 val)
+{
+	return _ntohl(val);
+}
+
+uint32 ntohl(uint32 val)
+{
+	return _ntohl(val);
+}
 
 //
 // useful networking headers
@@ -83,9 +103,9 @@ struct c_udp
 // track udp packets used to store bounded ports
 struct udp_packets
 {
-	uint16 uport;						  // udp bound port
-	struct c_udp upackets[MAX_UDP_PACKETS]; // udp packet
-	uint8 curr_packet;					  // current packet in use
+	uint16 uport;					 // udp bound port
+	char *upackets[MAX_UDP_PACKETS]; // udp packet
+	uint8 curr_packet;				 // current packet in use
 };
 
 // an ARP packet (comes after an Ethernet header).
