@@ -43,7 +43,7 @@ struct ip *get_ip_from_eth(char *eth_start)
 
 	struct eth *eth_hdr = (struct eth *)eth_start;
 	// (eth_hdr + 1) points to the memory immediately after the eth struct
-	return  (struct ip *)(eth_hdr + 1);
+	return (struct ip *)(eth_hdr + 1);
 
 	// (ip_hdr + 1) points to the memory immediately after the ip struct
 	// return (struct udp *)(ip_hdr + 1);
@@ -87,11 +87,12 @@ sys_bind(void)
 	int free_index = -1;
 	for (i = 0; i < MAX_UDP_PACKETS; i++)
 	{
-		if (tracked_packets[i].uport == 0)
+		int real_index = MAX_UDP_PACKETS - i - 1;
+		if (tracked_packets[real_index].uport == 0)
 		{
-			free_index = i;
+			free_index = real_index;
 		}
-		else if (tracked_packets[i].uport == port)
+		else if (tracked_packets[real_index].uport == port)
 		{
 			free_index = -1;
 		}
@@ -143,77 +144,121 @@ sys_recv(void)
 	//
 	// Your code here.
 	//
-	// struct proc *p = myproc();
-	// int dport;
-	// uint64 src;
-	// uint64 sport;
-	// uint64 buffaddr;
-	// int len;
+	struct proc *p = myproc();
 
-	// argint(0, &dport);
-	// argaddr(1, &src);
-	// argaddr(2, &sport);
-	// argaddr(3, &buffaddr);
-	// argint(4, &len);
+	acquire(&netlock);
 
-	// // check port
-	// int bind_index = -1;
-	// uint8 i = 0;
-	// for (i = 0; i < MAX_UDP_PACKETS; i++)
-	// {
-	// 	if (tracked_packets[i].uport == dport)
-	// 	{
-	// 		bind_index = i;
-	// 		break;
-	// 	}
-	// }
-	// if (bind_index < 0)
-	// 	return -1;
+	int dport;
+	uint64 src;
+	uint64 sport;
+	uint64 buffaddr;
+	int len;
+	// int w_len;
 
-	// uint8 curr_packet = tracked_packets[bind_index].curr_packet;
+	argint(0, &dport);
+	argaddr(1, &src);
+	argaddr(2, &sport);
+	argaddr(3, &buffaddr);
+	argint(4, &len);
 
-	// uint8 i = curr_packet;
-	// while (1)
-	// {
-	// 	// take the current packet
-	// 	if (tracked_packets[bind_index].upackets[i].dport != 0)
-	// 	{
-	// 		/* code */
-	// 		if (copyout(
-	// 				p->pagetable,
-	// 				src,
-	// 				&tracked_packets[bind_index].upackets[i].ip_src,
-	// 				sizeof(tracked_packets[bind_index].upackets[i].ip_src)) < 0)
-	// 		{
-	// 			printf("send: copyout failed\n");
-	// 			return -1;
-	// 		}
+	int total = len + sizeof(struct eth) + sizeof(struct ip) + sizeof(struct udp);
+	if (total > PGSIZE)
+	{
+		release(&netlock);
+		return -1;
+	}
 
-	// 		if (copyout(
-	// 				p->pagetable,
-	// 				sport,
-	// 				&tracked_packets[bind_index].upackets[i].sport,
-	// 				sizeof(tracked_packets[bind_index].upackets[i].sport)) < 0)
-	// 		{
-	// 			printf("send: copyout failed\n");
-	// 			return -1;
-	// 		}
+	// check port
+	int bind_index = -1;
+	uint8 i = 0;
+	for (i = 0; i < MAX_UDP_PACKETS; i++)
+	{
+		if (tracked_packets[i].uport == dport)
+		{
+			bind_index = i;
+			break;
+		}
+	}
+	if (bind_index < 0)
+	{
+		release(&netlock);
+		return -1;
+	}
 
-	// 		i = (i + 1) % MAX_UDP_PACKETS;
-	// 		break;
-	// 	}
+	uint8 curr_packet = tracked_packets[bind_index].curr_packet;
+	i = curr_packet;
+	uint8 j = i;
+	while (1)
+	{
+		j = i;
 
-	// 	// check the earliest package
-	// 	i = (i + 1) % MAX_UDP_PACKETS;
-	// 	if (i == curr_packet)
-	// 		break;
-	// }
+		// take the current packet
+		char *packets = tracked_packets[bind_index].upackets[i];
+		if (packets != 0)
+		{
+			/* code */
+			struct ip *ip = get_ip_from_eth(packets);
+			uint32 ip_src = ntohl(ip->ip_src);
 
-	// // empty queue, will wait
-	// if (i == curr_packet)
-	// {
-	// 	curr_packet = 0;
-	// }
+			struct udp *udp = get_udp_from_eth(packets);
+			uint16 udp_sport = ntohs(udp->sport);
+
+			printf("arg: %d, len: %d, sof: %ld, total: %d\n",len, udp->ulen, sizeof(udp), total);
+			if (copyout(
+					p->pagetable,
+					src,
+					(char *)&ip_src,
+					sizeof(ip->ip_src)) < 0 ||
+				copyout(
+					p->pagetable,
+					sport,
+					(char *)&udp_sport,
+					sizeof(udp->sport)) < 0 ||
+				copyout(
+					p->pagetable,
+					buffaddr,
+					(char *)(udp + 1),
+					len) < 0)
+			{
+				printf("recv - src: copyout failed\n");
+				kfree(tracked_packets[bind_index].upackets[j]);
+				tracked_packets[bind_index].upackets[j] = 0;
+				tracked_packets[bind_index].curr_packet = (i + 1) % MAX_UDP_PACKETS;
+
+				release(&netlock);
+				return -1;
+			}
+
+			i = (i + 1) % MAX_UDP_PACKETS;
+			break;
+		}
+
+		// check the earliest package
+		i = (i + 1) % MAX_UDP_PACKETS;
+		if (i == curr_packet)
+			break;
+	}
+
+	// empty queue, will wait
+	if (i == curr_packet)
+	{
+		tracked_packets[bind_index].curr_packet = 0;
+
+		printf("empty queue\n");
+	}
+	else
+	{
+		// reset
+		kfree(tracked_packets[bind_index].upackets[j]);
+		tracked_packets[bind_index].upackets[j] = 0;
+		tracked_packets[bind_index].curr_packet = i;
+
+		release(&netlock);
+
+		return len;
+	}
+
+	release(&netlock);
 
 	return -1;
 }
@@ -323,6 +368,7 @@ sys_send(void)
 
 void ip_rx(char *buf, int len)
 {
+	printf("ll: %d\n", len);
 	// don't delete this printf; make grade depends on it.
 	static int seen_ip = 0;
 	if (seen_ip == 0)
@@ -340,7 +386,8 @@ void ip_rx(char *buf, int len)
 	struct udp *udp = (struct udp *)(ip + 1);
 
 	// check if protocol is udp
-	if (ip->ip_p != IPPROTO_UDP) {
+	if (ip->ip_p != IPPROTO_UDP)
+	{
 		release(&netlock);
 
 		return;
@@ -357,7 +404,8 @@ void ip_rx(char *buf, int len)
 			break;
 		}
 	}
-	if (bind_index < 0) {
+	if (bind_index < 0)
+	{
 		printf("\n");
 		release(&netlock);
 
@@ -370,11 +418,11 @@ void ip_rx(char *buf, int len)
 	int next_index = -1;
 	for (i = 0; i < MAX_UDP_PACKETS; i++)
 	{
-		struct udp *_udp = get_udp_from_eth(tracked_packets[bind_index].upackets[MAX_UDP_PACKETS - i -1]);
+		struct udp *_udp = get_udp_from_eth(tracked_packets[bind_index].upackets[MAX_UDP_PACKETS - i - 1]);
 
 		if (_udp == 0)
 		{
-			next_index = MAX_UDP_PACKETS - i -1;
+			next_index = MAX_UDP_PACKETS - i - 1;
 			// break;
 		}
 	}

@@ -286,12 +286,15 @@ ping0()
     printf("ping0: wrong sport %d, expecting %d\n", sport, NET_TESTS_PORT);
     return 0;
   }
-  
-  if(memcmp(buf, ibuf, sizeof(buf)) != 0){
-    printf("ping0: wrong content\n");
-    return 0;
+
+  printf("here\n");
+  if (memcmp(buf, ibuf, sizeof(buf)) != 0)
+  {
+	  printf("ping0: wrong content\n");
+	  printf("buf: %s; ibuf: %s\n", buf, ibuf);
+	  return 0;
   }
-  
+
   if(cc != sizeof(buf)){
     printf("ping0: wrong length %d, expecting %ld\n", cc, sizeof(buf));
     return 0;
